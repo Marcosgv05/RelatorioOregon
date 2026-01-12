@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conectar WhatsApp - Oregon Analytics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .connect-page {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #0f4c3a 0%, #14532d 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .connect-container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      padding: 40px;
+      max-width: 500px;
+      width: 100%;
+      text-align: center;
+    }
+    
+    .connect-logo {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #0f4c3a 0%, #14532d 100%);
+      border-radius: 20px;
+      margin: 0 auto 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 32px;
+      font-weight: bold;
+    }
+    
+    .connect-title {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 10px;
+    }
+    
+    .connect-subtitle {
+      font-size: 16px;
+      color: #666;
+      margin-bottom: 30px;
+      line-height: 1.5;
+    }
+    
+    .instance-info {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 30px;
+    }
+    
+    .instance-name {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin-bottom: 5px;
+    }
+    
+    .instance-status {
+      font-size: 14px;
+      color: #666;
+    }
+    
+    .qr-container {
+      background: white;
+      border: 2px solid #e1e5e9;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      min-height: 300px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .qr-loading {
+      text-align: center;
+    }
+    
+    .qr-loading .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #f3f4f6;
+      border-top: 4px solid #0f4c3a;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 15px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .qr-image img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+    }
+    
+    .instructions {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      color: #0f4c3a;
+    }
+    
+    .success-message {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .success-icon {
+      width: 60px;
+      height: 60px;
+      background: #0f4c3a;
+      border-radius: 50%;
+      margin: 0 auto 15px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 24px;
+    }
+    
+    .success-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #0f4c3a;
+      margin-bottom: 5px;
+    }
+    
+    .success-text {
+      font-size: 14px;
+      color: #14532d;
+    }
+    
+    .error-message {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      color: #dc2626;
+    }
+    
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .btn-primary {
+      background: #0f4c3a;
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: #14532d;
+    }
+    
+    .btn-secondary {
+      background: #f3f4f6;
+      color: #4b5563;
+    }
+    
+    .btn-secondary:hover {
+      background: #e5e7eb;
+    }
+  </style>
+</head>
+<body>
+  <div class="connect-page">
+    <div class="connect-container">
+      <div class="connect-logo">O</div>
+      <h1 class="connect-title">Conectar WhatsApp</h1>
+      <p class="connect-subtitle">Escaneie o QR Code abaixo para conectar seu WhatsApp ao sistema de analytics</p>
+      
+      <div class="instance-info">
+        <div class="instance-name" id="instanceName">Carregando...</div>
+        <div class="instance-status" id="instanceStatus">Verificando conexão...</div>
+      </div>
+      
+      <!-- Estados da Conexão -->
+      <div id="loadingState" class="qr-container">
+        <div class="qr-loading">
+          <div class="spinner"></div>
+          <p>Gerando QR Code...</p>
+        </div>
+      </div>
+      
+      <div id="qrState" class="qr-container" style="display: none;">
+        <div class="qr-image">
+          <img id="qrImage" src="" alt="QR Code">
+        </div>
+      </div>
+      
+      <div id="successState" style="display: none;">
+        <div class="success-message">
+          <div class="success-icon">✓</div>
+          <h2 class="success-title">WhatsApp Conectado!</h2>
+          <p class="success-text">Seu WhatsApp foi conectado com sucesso ao sistema Oregon Analytics.</p>
+        </div>
+      </div>
+      
+      <div id="errorState" class="error-message" style="display: none;">
+        <p id="errorText">Ocorreu um erro ao conectar. Por favor, tente novamente.</p>
+      </div>
+      
+      <div class="instructions" id="instructions">
+        <strong>Como conectar:</strong><br>
+        1. Abra o WhatsApp no seu celular<br>
+        2. Vá em Menu → Aparelhos conectados<br>
+        3. Toque em "Conectar aparelho"<br>
+        4. Escaneie o QR Code acima
+      </div>
+      
+      <div id="actions" style="display: none;">
+        <button class="btn btn-secondary" onclick="window.close()">Fechar Janela</button>
+      </div>
+    </div>
+  </div>
+  
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script>
+    // Estado da conexão
+    let socket = null;
+    let instanceId = null;
+    let connectionTimeout = null;
+    
+    // Obter parâmetros da URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const instance = urlParams.get('instance');
+    
+    console.log('🔍 Parâmetros da URL:');
+    console.log('📋 URL completa:', window.location.search);
+    console.log('🔑 Token:', token);
+    console.log('📋 Instance:', instance);
+    console.log('🌐 URL completa:', window.location.href);
+    
+    // Funções de UI
+    function showQRCode(qrData) {
+      console.log('🎨 showQRCode chamado com:', qrData.substring(0, 50) + '...');
+      console.log('🎨 Elemento loadingState:', document.getElementById('loadingState'));
+      console.log('🎨 Elemento qrState:', document.getElementById('qrState'));
+      console.log('🎨 Elemento qrImage:', document.getElementById('qrImage'));
+      
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('qrState').style.display = 'block';
+      
+      const qrImage = document.getElementById('qrImage');
+      qrImage.src = qrData;
+      
+      // Adicionar evento para verificar se a imagem carregou
+      qrImage.onload = function() {
+        console.log('🖼️ QR Code image carregado com sucesso!');
+        console.log('🖼️ Dimensões:', this.naturalWidth + 'x' + this.naturalHeight);
+      };
+      
+      qrImage.onerror = function() {
+        console.error('❌ Erro ao carregar imagem do QR Code');
+        console.error('❌ Src:', qrData.substring(0, 50) + '...');
+      };
+      
+      document.getElementById('instanceStatus').textContent = 'Aguardando conexão...';
+      
+      console.log('✅ QR Code exibido! Estado atual:');
+      console.log('🎨 loadingState display:', document.getElementById('loadingState').style.display);
+      console.log('🎨 qrState display:', document.getElementById('qrState').style.display);
+    }
+    
+    function showSuccess() {
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('qrState').style.display = 'none';
+      document.getElementById('successState').style.display = 'block';
+      document.getElementById('instructions').style.display = 'none';
+      document.getElementById('actions').style.display = 'block';
+      document.getElementById('instanceStatus').textContent = 'Conectado com sucesso!';
+      
+      if (connectionTimeout) {
+        clearTimeout(connectionTimeout);
+      }
+      
+      // Fechar automaticamente após 5 segundos
+      setTimeout(() => {
+        window.close();
+      }, 5000);
+    }
+    
+    function showError(message) {
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('qrState').style.display = 'none';
+      document.getElementById('errorState').style.display = 'block';
+      document.getElementById('errorText').textContent = message;
+      document.getElementById('instanceStatus').textContent = 'Erro na conexão';
+    }
+    
+    function showPreparing() {
+      document.getElementById('instanceStatus').textContent = 'Preparando conexão...';
+      document.querySelector('.qr-loading p').textContent = 'Preparando conexão WhatsApp';
+    }
+    
+    // Inicializar Socket.IO
+    function initSocket() {
+      console.log('🚀 Inicializando Socket.IO...');
+      socket = io();
+      
+      socket.on('connect', () => {
+        console.log('✅ Socket conectado');
+        console.log('📋 Instance ID:', instance);
+        console.log('🔑 Token:', token);
+        
+        // Inscrever na instância específica
+        socket.emit('subscribe', { instanceId: instance });
+        console.log('📡 Enviado subscribe para instância:', instance);
+        
+        // Solicitar QR Code com retentativas inteligentes
+        function requestQRWithRetry(retryCount = 0) {
+          console.log(`📱 [Tentativa ${retryCount + 1}/10] Enviando request-qr para instância: ${instance}`);
+          socket.emit('request-qr', { instanceId: instance });
+          
+          // Se não receber QR em 5 segundos, tenta novamente (até 10 vezes = 50 segundos)
+          setTimeout(() => {
+            if (retryCount < 9 && !document.getElementById('qrImage').src) {
+              requestQRWithRetry(retryCount + 1);
+            } else if (retryCount === 9 && !document.getElementById('qrImage').src) {
+              // Depois de 10 tentativas, mostra mensagem de ajuda
+              showTimeoutHelp();
+            }
+          }, 5000);
+        }
+        
+        // Mostrar ajuda quando timeout
+        function showTimeoutHelp() {
+          console.log('⏰ Timeout atingido, mostrando ajuda manual');
+          document.querySelector('.qr-loading p').textContent = 'QR Code demorando mais que o esperado...';
+          document.getElementById('instanceStatus').textContent = 'Tente conectar manualmente no dashboard';
+          
+          // Continuar tentando em background
+          setTimeout(() => {
+            socket.emit('request-qr', { instanceId: instance });
+          }, 10000);
+        }
+        
+        // Chamar a função de retentativas
+        requestQRWithRetry();
+      });
+      
+      socket.on('qr-code', (data) => {
+        console.log('📥 QR Code recebido:', data);
+        console.log('📋 Instance ID esperado:', instance);
+        console.log('📋 Instance ID recebido:', data.instanceId);
+        console.log('📋 QR Code existe?:', !!data.qr);
+        console.log('📋 QR Code length:', data.qr ? data.qr.length : 'N/A');
+        
+        if (data.instanceId === instance && data.qr) {
+          console.log('✅ QR Code válido para esta instância, exibindo...');
+          showQRCode(data.qr);
+        } else {
+          console.log('❌ QR Code não é para esta instância ou está vazio');
+        }
+      });
+      
+      socket.on('qr-error', (data) => {
+        console.log('❌ QR Error recebido:', data);
+        if (data.instanceId === instance) {
+          if (data.message && data.message.includes('QR Code não disponível')) {
+            console.log('🔄 QR ainda não disponível. Tentando novamente em 5 segundos...');
+            setTimeout(() => {
+              socket.emit('request-qr', { instanceId: instance });
+            }, 5000);
+          } else {
+            showError(data.message || 'Erro ao gerar QR Code');
+          }
+        }
+      });
+      
+      socket.on('connected', (data) => {
+        console.log('✅ Connected recebido:', data);
+        if (data.instanceId === instance) {
+          showSuccess();
+        }
+      });
+      
+      socket.on('disconnected', () => {
+        console.log('❌ Socket desconectado');
+        if (connectionTimeout) {
+          clearTimeout(connectionTimeout);
+        }
+        showError('Conexão perdida. Por favor, recarregue a página.');
+      });
+      
+      socket.on('qr-loop', (data) => {
+        console.log('🔄 QR Loop recebido:', data);
+        if (data.instanceId === instance) {
+          showError(data.message || 'Ocorreu um erro ao gerar o QR Code. Por favor, tente novamente.');
+        }
+      });
+    }
+    
+    // Carregar informações da instância
+    async function loadInstanceInfo() {
+      try {
+        const response = await fetch(`/api/connect/public/instance/${instance}?token=${token}`);
+        if (!response.ok) {
+          throw new Error('Instância não encontrada');
+        }
+        
+        const data = await response.json();
+        document.getElementById('instanceName').textContent = data.name;
+        
+        if (data.status === 'connected') {
+          showSuccess();
+        } else {
+          initSocket();
+          
+          // Timeout de 5 minutos para QR Code expirar
+          connectionTimeout = setTimeout(() => {
+            showError('QR Code expirou. Por favor, solicite um novo link.');
+          }, 5 * 60 * 1000);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar instância:', error);
+        showError('Não foi possível carregar as informações da conexão.');
+      }
+    }
+    
+    // Verificar parâmetros e inicializar
+    if (!token || !instance) {
+      showError('Link inválido ou incompleto.');
+    } else {
+      // Inicializar
+      showPreparing();
+      loadInstanceInfo();
+    }
+  </script>
+</body>
+</html>

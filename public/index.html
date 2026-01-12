@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oregon Analytics - Dashboard de Atendimento</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <div class="logo-icon"></div>
+          <span class="logo-text">Oregon</span>
+        </div>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" data-view="dashboard">
+          <svg class="nav-icon" width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M3 10L9 4L13 8L17 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M3 16H17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span>Dashboard</span>
+        </a>
+        <a href="#" class="nav-item" data-view="conversations">
+          <svg class="nav-icon" width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <path d="M17 5H3C1.89543 5 1 5.89543 1 7V13C1 14.1046 1.89543 15 3 15H17C18.1046 15 19 14.1046 19 13V7C19 5.89543 18.1046 5 17 5Z" stroke="currentColor" stroke-width="2"/>
+            <path d="M1 7L10 12L19 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span>Conversas</span>
+        </a>
+        <a href="#" class="nav-item" data-view="instances">
+          <svg class="nav-icon" width="20" height="20" viewBox="0 0 20 20" fill="none">
+            <rect x="5" y="2" width="10" height="16" rx="2" stroke="currentColor" stroke-width="2"/>
+            <path d="M5 6H15" stroke="currentColor" stroke-width="2"/>
+          </svg>
+          <span>Conexões</span>
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <div class="user-avatar" id="userAvatar"></div>
+          <div class="user-details">
+            <span class="user-name" id="userName">Usuário</span>
+            <span class="user-email" id="userEmail">email@exemplo.com</span>
+          </div>
+        </div>
+        <button class="btn-logout" id="btnLogout">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M6 14H3C2.44772 14 2 13.5523 2 13V3C2 2.44772 2.44772 2 3 2H6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M10 11L14 8L10 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M14 8H6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          Sair
+        </button>
+      </div>
+    </aside>
+    
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Header -->
+      <header class="main-header">
+        <div class="header-left">
+          <h1 id="pageTitle">Dashboard</h1>
+          <div class="instance-selector">
+            <select id="instanceSelect">
+              <option value="">Selecione uma conexão</option>
+            </select>
+          </div>
+        </div>
+        <div class="header-right">
+          <div class="date-filter">
+            <input type="date" id="startDate">
+            <span>até</span>
+            <input type="date" id="endDate">
+            <button class="btn btn-primary" id="btnFilter">Aplicar</button>
+          </div>
+        </div>
+      </header>
+      
+      <!-- Dashboard View -->
+      <section class="view active" id="dashboardView">
+        <!-- KPI Cards -->
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <span class="kpi-title">Tempo de Primeira Resposta</span>
+            </div>
+            <div class="kpi-value" id="metricFirstResponse">0s</div>
+            <div class="kpi-trend positive" id="trendFirstResponse">
+              <span class="trend-arrow">↓</span>
+              <span class="trend-text">12% mais rápido</span>
+            </div>
+          </div>
+          
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <span class="kpi-title">Tempo Médio de Resposta</span>
+            </div>
+            <div class="kpi-value" id="metricAvgResponse">0s</div>
+            <div class="kpi-trend neutral" id="trendAvgResponse">
+              <span class="trend-arrow">→</span>
+              <span class="trend-text">Sem alteração</span>
+            </div>
+          </div>
+          
+          <div class="kpi-card">
+            <div class="kpi-header">
+              <span class="kpi-title">Tentativas Ativas de Contato</span>
+            </div>
+            <div class="kpi-value" id="metricPending">0</div>
+            <div class="kpi-trend negative" id="trendPending">
+              <span class="trend-arrow">↑</span>
+              <span class="trend-text">Aguardando resposta</span>
+            </div>
+          </div>
+          
+          <div class="kpi-card kpi-highlight">
+            <div class="kpi-header">
+              <span class="kpi-title">Follows Receptivos</span>
+              <span class="kpi-badge">Clientes Retornando</span>
+            </div>
+            <div class="kpi-value" id="metricReturning">0</div>
+            <div class="kpi-subtitle">
+              <span id="metricNewLeads">0</span> novos leads no período
+            </div>
+          </div>
+        </div>
+        
+        <!-- Chart -->
+        <div class="chart-card">
+          <div class="chart-header">
+            <h3 class="chart-title">Contatos Recebidos com Número (Por Dia)</h3>
+            <div class="chart-filters">
+              <button class="filter-btn" data-days="7">7 dias</button>
+              <button class="filter-btn active" data-days="30">30 dias</button>
+              <button class="filter-btn" data-days="90">90 dias</button>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="contactsChart"></canvas>
+          </div>
+        </div>
+        
+        <!-- Queue Table -->
+        <div class="queue-card">
+          <div class="queue-header">
+            <h3 class="queue-title">Fila de Primeira Mensagem</h3>
+            <span class="queue-count" id="queueCount">0 aguardando</span>
+          </div>
+          <table class="queue-table">
+            <thead>
+              <tr>
+                <th>Contato</th>
+                <th>Mensagem</th>
+                <th>Recebido</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="queueBody">
+              <tr>
+                <td colspan="4">
+                  <div class="queue-empty">
+                    <p>Nenhuma mensagem aguardando resposta</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      
+      <!-- Conversations View -->
+      <section class="view" id="conversationsView">
+        <div class="conversations-container">
+          <!-- Contacts List -->
+          <div class="contacts-panel">
+            <div class="contacts-header">
+              <input type="text" class="search-input" placeholder="Buscar contato..." id="searchContact">
+            </div>
+            <div class="contacts-list" id="contactsList">
+              <div class="contact-empty">Nenhum contato ainda</div>
+            </div>
+          </div>
+          
+          <!-- Chat Panel -->
+          <div class="chat-panel">
+            <div class="chat-header">
+              <div class="chat-avatar" id="chatAvatar"></div>
+              <div class="chat-contact-info">
+                <h3 id="chatContactName">Selecione um contato</h3>
+                <span id="chatContactPhone"></span>
+              </div>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+              <div class="chat-empty">
+                <p>Selecione um contato para ver a conversa</p>
+              </div>
+            </div>
+            <div class="chat-input-container" id="chatInputContainer" style="display: none;">
+              <form id="sendMessageForm" class="chat-input-form">
+                <input type="text" id="messageInput" class="chat-input" placeholder="Digite sua mensagem..." autocomplete="off">
+                <button type="submit" id="sendMessageBtn" class="btn btn-primary btn-send" title="Enviar mensagem">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 2L11 13"></path>
+                    <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
+                  </svg>
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Instances View -->
+      <section class="view" id="instancesView">
+        <div class="instances-header">
+          <h2>Suas Conexões WhatsApp</h2>
+          <button class="btn btn-primary" id="btnNewInstance">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M8 3V13M3 8H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            Nova Conexão
+          </button>
+        </div>
+        
+        <div class="instances-grid" id="instancesGrid">
+          <!-- Instances will be rendered here -->
+        </div>
+        
+        <!-- QR Code Modal -->
+        <div class="modal" id="qrModal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Conectar WhatsApp</h3>
+              <button class="modal-close" id="closeQrModal">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </button>
+            </div>
+            <div class="modal-body">
+              <p style="text-align: center; color: var(--text-secondary); margin-bottom: 16px;">
+                Escaneie o QR Code com seu WhatsApp
+              </p>
+              <div class="qr-container" id="qrContainer">
+                <div class="qr-loading">
+                  <span class="spinner"></span>
+                  <p>Gerando QR Code...</p>
+                </div>
+              </div>
+              <p class="qr-hint">
+                Abra o WhatsApp → Menu → Aparelhos conectados → Conectar aparelho
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- New Instance Modal -->
+        <div class="modal" id="newInstanceModal">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>Nova Conexão</h3>
+              <button class="modal-close" id="closeNewInstanceModal">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </button>
+            </div>
+            <div class="modal-body">
+              <form id="newInstanceForm">
+                <div class="form-group">
+                  <label for="instanceName">Nome da Conexão</label>
+                  <input type="text" id="instanceName" placeholder="Ex: WhatsApp Principal" required>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Criar Conexão</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  
+  <!-- Login Page -->
+  <div id="loginPage" class="login-page">
+    <div class="login-container">
+      <div class="login-header">
+        <div class="login-logo"></div>
+        <h1>Oregon Analytics</h1>
+        <p>Sistema de Analytics de Atendimento</p>
+      </div>
+      
+      <div class="login-tabs">
+        <button class="tab-btn active" data-tab="login">Entrar</button>
+        <button class="tab-btn" data-tab="register">Cadastrar</button>
+      </div>
+      
+      <form id="loginForm" class="login-form active">
+        <div class="form-group">
+          <label for="loginEmail">Email</label>
+          <input type="email" id="loginEmail" placeholder="seu@email.com" required>
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Senha</label>
+          <input type="password" id="loginPassword" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+      </form>
+      
+      <form id="registerForm" class="login-form">
+        <div class="form-group">
+          <label for="registerName">Nome</label>
+          <input type="text" id="registerName" placeholder="Seu nome" required>
+        </div>
+        <div class="form-group">
+          <label for="registerCompany">Empresa</label>
+          <input type="text" id="registerCompany" placeholder="Nome da empresa (opcional)">
+        </div>
+        <div class="form-group">
+          <label for="registerEmail">Email</label>
+          <input type="email" id="registerEmail" placeholder="seu@email.com" required>
+        </div>
+        <div class="form-group">
+          <label for="registerPassword">Senha</label>
+          <input type="password" id="registerPassword" placeholder="Mínimo 6 caracteres" required minlength="6">
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Criar conta</button>
+      </form>
+    </div>
+  </div>
+  
+  <!-- Toast Notification -->
+  <div id="toast" class="toast"></div>
+  
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

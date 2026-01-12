@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Database (local development)
+*.db
+*.sqlite
+*.sqlite3
+oregon.db*
+
+# Auth sessions
+auth_sessions/
+
+# Logs
+logs/
+*.log
+pino-*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Coverage
+coverage/
+.nyc_output
+
+# Cache
+.cache/
+.parcel-cache/
+
+# Build
+dist/
+build/
+
+# Temporary files
+*.tmp
+*.temp
