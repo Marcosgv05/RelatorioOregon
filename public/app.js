@@ -791,25 +791,12 @@ function copyConnectLink(link) {
   });
 }
 
-// ==================== Auth ====================
+// Sem autenticação - acesso direto
 async function checkAuth() {
-  const token = localStorage.getItem('oregon_token');
-  if (!token) {
-    showLoginPage();
-    return;
-  }
-
-  state.token = token;
-
-  try {
-    const { user } = await api.getMe();
-    state.user = user;
-    hideLoginPage();
-    initApp();
-  } catch (err) {
-    localStorage.removeItem('oregon_token');
-    showLoginPage();
-  }
+  // Usuário fictício para manter compatibilidade
+  state.user = { id: 1, name: 'Usuário', email: 'usuario@oregon.com' };
+  hideLoginPage();
+  initApp();
 }
 
 async function login(email, password) {

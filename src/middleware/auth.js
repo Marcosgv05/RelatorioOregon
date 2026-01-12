@@ -4,41 +4,26 @@ import { logger } from '../config/logger.js';
 const JWT_SECRET = process.env.JWT_SECRET || 'oregon-secret-key-change-in-production';
 
 /**
- * Middleware de autenticação JWT
+ * Middleware de autenticação - DESABILITADO (acesso público)
+ * Sempre define um usuário padrão e passa para o próximo middleware
  */
 export function authenticateToken(req, res, next) {
-  // Busca token no header Authorization ou no cookie
-  const authHeader = req.headers['authorization'];
-  const tokenFromHeader = authHeader && authHeader.split(' ')[1];
-  const tokenFromCookie = req.cookies?.token;
-  
-  const token = tokenFromHeader || tokenFromCookie;
-  
-  if (!token) {
-    return res.status(401).json({ error: 'Token de acesso necessário' });
-  }
-  
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (error) {
-    logger.warn(`Token inválido: ${error.message}`);
-    return res.status(403).json({ error: 'Token inválido ou expirado' });
-  }
+  // Usuário padrão fixo - sem autenticação
+  req.user = { id: 1, email: 'usuario@oregon.com', name: 'Usuário' };
+  next();
 }
 
 /**
- * Gera um token JWT
+ * Gera um token JWT (mantido para compatibilidade)
  */
 export function generateToken(user) {
   return jwt.sign(
-    { 
-      id: user.id, 
-      email: user.email, 
-      name: user.name 
-    }, 
-    JWT_SECRET, 
+    {
+      id: user.id,
+      email: user.email,
+      name: user.name
+    },
+    JWT_SECRET,
     { expiresIn: '7d' }
   );
 }
@@ -47,21 +32,7 @@ export function generateToken(user) {
  * Middleware opcional - não bloqueia se não tiver token
  */
 export function optionalAuth(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const tokenFromHeader = authHeader && authHeader.split(' ')[1];
-  const tokenFromCookie = req.cookies?.token;
-  
-  const token = tokenFromHeader || tokenFromCookie;
-  
-  if (token) {
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET);
-      req.user = decoded;
-    } catch (error) {
-      // Ignora erros - apenas não define req.user
-    }
-  }
-  
+  req.user = { id: 1, email: 'usuario@oregon.com', name: 'Usuário' };
   next();
 }
 

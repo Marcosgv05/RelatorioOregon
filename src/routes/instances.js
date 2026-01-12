@@ -1,19 +1,20 @@
 import { Router } from 'express';
 import { instanceQueries } from '../db/database.js';
-import { authenticateToken } from '../middleware/auth.js';
 import sessionManager from '../whatsapp/sessionManager.js';
 import { logger } from '../config/logger.js';
 
 const router = Router();
 
-router.use(authenticateToken);
+// Usuário padrão fixo (sem autenticação)
+const DEFAULT_USER_ID = 1;
 
 /**
  * GET /api/instances
  */
 router.get('/', async (req, res) => {
   try {
-    const instances = await instanceQueries.findByUserId(req.user.id);
+    // Lista todas as instâncias (sem filtro de usuário)
+    const instances = await instanceQueries.findAll();
 
     const instancesWithStatus = instances.map(inst => {
       const session = sessionManager.getSession(inst.session_id);
@@ -43,9 +44,9 @@ router.post('/', async (req, res) => {
     }
 
     const id = `inst_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const sessionId = `session_${req.user.id}_${Date.now()}`;
+    const sessionId = `session_${DEFAULT_USER_ID}_${Date.now()}`;
 
-    await instanceQueries.create(id, req.user.id, sessionId, name, null, 'disconnected');
+    await instanceQueries.create(id, DEFAULT_USER_ID, sessionId, name, null, 'disconnected');
 
     const instance = await instanceQueries.findById(id);
 
@@ -69,7 +70,7 @@ router.post('/:id/connect', async (req, res) => {
     const { id } = req.params;
 
     const instance = await instanceQueries.findById(id);
-    if (!instance || instance.user_id !== req.user.id) {
+    if (!instance) {
       return res.status(404).json({ error: 'Instância não encontrada' });
     }
 
@@ -94,7 +95,7 @@ router.post('/:id/disconnect', async (req, res) => {
     const { id } = req.params;
 
     const instance = await instanceQueries.findById(id);
-    if (!instance || instance.user_id !== req.user.id) {
+    if (!instance) {
       return res.status(404).json({ error: 'Instância não encontrada' });
     }
 
@@ -116,7 +117,7 @@ router.delete('/:id', async (req, res) => {
     const { id } = req.params;
 
     const instance = await instanceQueries.findById(id);
-    if (!instance || instance.user_id !== req.user.id) {
+    if (!instance) {
       return res.status(404).json({ error: 'Instância não encontrada' });
     }
 

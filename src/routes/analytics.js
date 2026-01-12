@@ -1,13 +1,9 @@
 import { Router } from 'express';
 import { instanceQueries } from '../db/database.js';
-import { authenticateToken } from '../middleware/auth.js';
 import analyticsService from '../services/analyticsService.js';
 import { logger } from '../config/logger.js';
 
 const router = Router();
-
-// Todas as rotas requerem autenticação
-router.use(authenticateToken);
 
 /**
  * GET /api/analytics/dashboard/:instanceId
@@ -18,7 +14,7 @@ router.get('/dashboard/:instanceId', async (req, res) => {
     const { startDate, endDate } = req.query;
 
     const instance = await instanceQueries.findById(instanceId);
-    if (!instance || instance.user_id !== req.user.id) {
+    if (!instance) {
       return res.status(404).json({ error: 'Instância não encontrada' });
     }
 
@@ -56,7 +52,7 @@ router.get('/contacts/:instanceId', async (req, res) => {
     const { limit = 50 } = req.query;
 
     const instance = await instanceQueries.findById(instanceId);
-    if (!instance || instance.user_id !== req.user.id) {
+    if (!instance) {
       return res.status(404).json({ error: 'Instância não encontrada' });
     }
 
@@ -90,7 +86,7 @@ router.get('/pending/:instanceId', async (req, res) => {
     const { instanceId } = req.params;
 
     const instance = await instanceQueries.findById(instanceId);
-    if (!instance || instance.user_id !== req.user.id) {
+    if (!instance) {
       return res.status(404).json({ error: 'Instância não encontrada' });
     }
 
@@ -114,7 +110,7 @@ router.get('/returning/:instanceId', async (req, res) => {
     const { limit = 50 } = req.query;
 
     const instance = await instanceQueries.findById(instanceId);
-    if (!instance || instance.user_id !== req.user.id) {
+    if (!instance) {
       return res.status(404).json({ error: 'Instância não encontrada' });
     }
 
@@ -134,7 +130,7 @@ router.get('/returning/:instanceId', async (req, res) => {
  */
 router.get('/summary', async (req, res) => {
   try {
-    const instances = await instanceQueries.findByUserId(req.user.id);
+    const instances = await instanceQueries.findAll();
 
     const summary = await Promise.all(instances.map(async (inst) => {
       const metrics = await analyticsService.getDashboardMetrics(inst.id);
@@ -180,8 +176,8 @@ router.post('/send/:contactId', async (req, res) => {
     }
 
     const instance = await instanceQueries.findById(contact.instanceId);
-    if (!instance || instance.user_id !== req.user.id) {
-      return res.status(403).json({ error: 'Acesso negado' });
+    if (!instance) {
+      return res.status(404).json({ error: 'Instância não encontrada' });
     }
 
     if (instance.status !== 'connected') {

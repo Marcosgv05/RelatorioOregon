@@ -1,27 +1,26 @@
 import { Router } from 'express';
 import { instanceQueries } from '../db/database.js';
-import { authenticateToken } from '../middleware/auth.js';
 import { logger } from '../config/logger.js';
 import crypto from 'crypto';
 
 const router = Router();
 
-function generateConnectionToken(instanceId, userId) {
-  const payload = `${instanceId}:${userId}:${Date.now()}`;
+function generateConnectionToken(instanceId, salt) {
+  const payload = `${instanceId}:${salt}:${Date.now()}`;
   return crypto.createHash('sha256').update(payload).digest('hex');
 }
 
 /**
  * POST /api/connect/:instanceId/connect-link
  */
-router.post('/:instanceId/connect-link', authenticateToken, async (req, res) => {
+router.post('/:instanceId/connect-link', async (req, res) => {
   try {
     logger.info(`Requisição de link recebida para instância: ${req.params.instanceId}`);
 
     const { instanceId } = req.params;
 
     const instance = await instanceQueries.findById(instanceId);
-    if (!instance || instance.user_id !== req.user.id) {
+    if (!instance) {
       return res.status(404).json({ error: 'Instância não encontrada' });
     }
 
@@ -40,9 +39,8 @@ router.post('/:instanceId/connect-link', authenticateToken, async (req, res) => 
       }
     }
 
-    const token = generateConnectionToken(instanceId, req.user.id);
+    const token = generateConnectionToken(instanceId, 'public');
 
-    // Usa URL dinâmica baseada no request
     const protocol = req.protocol;
     const host = req.get('host');
     const connectLink = `${protocol}://${host}/connect.html?token=${token}&instance=${instanceId}`;
@@ -75,11 +73,6 @@ router.post('/:instanceId/connect-link', authenticateToken, async (req, res) => 
 router.get('/public/instance/:instanceId', async (req, res) => {
   try {
     const { instanceId } = req.params;
-    const { token } = req.query;
-
-    if (!token) {
-      return res.status(400).json({ error: 'Token não fornecido' });
-    }
 
     const instance = await instanceQueries.findById(instanceId);
     if (!instance) {
