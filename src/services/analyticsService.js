@@ -1,4 +1,4 @@
-import db, { contactQueries, messageQueries, metricsQueries } from '../db/database.js';
+import { query, contactQueries, messageQueries, metricsQueries } from '../db/database.js';
 import { logger } from '../config/logger.js';
 
 /**
@@ -10,7 +10,7 @@ class AnalyticsService {
   /**
    * Processa uma nova mensagem recebida/enviada
    */
-  processMessage(instanceId, phone, messageData) {
+  async processMessage(instanceId, phone, messageData) {
     const { fromMe, body, timestamp, contactName, mediaType, messageId } = messageData;
 
     try {
@@ -18,49 +18,39 @@ class AnalyticsService {
       const dateStr = now.toISOString().split('T')[0];
 
       // Busca ou cria contato
-      let contact = contactQueries.findByPhone.get(instanceId, phone);
+      let contact = await contactQueries.findByPhone(instanceId, phone);
       let isNewContact = false;
-      let isReturningContact = false; // Follow receptivo
+      let isReturningContact = false;
 
-      // Só usa o contactName se a mensagem veio do contato (não nossa)
-      // Isso evita sobrescrever o nome do contato com o nosso nome
+      // Só usa o contactName se a mensagem veio do contato
       const nameToUse = fromMe ? null : contactName;
 
       if (!contact) {
-        // Novo contato - primeira mensagem
+        // Novo contato
         isNewContact = true;
-        contact = contactQueries.upsert.get(
-          instanceId,
-          phone,
-          nameToUse,
-          timestamp,
-          timestamp
-        );
-        logger.info(`📥 Novo lead: ${phone} (${nameToUse || 'sem nome'})`);
+        contact = await contactQueries.upsert(instanceId, phone, nameToUse, timestamp, timestamp);
+        logger.info(`Novo lead: ${phone} (${nameToUse || 'sem nome'})`);
       } else {
-        // Contato existente
-        // Verifica se é um "follow receptivo" (contato retornando após um período)
-        // Considera "retorno" se a última mensagem foi há mais de 24h e veio do contato (não do cliente)
+        // Contato existente - verifica se é retorno
         if (!fromMe && contact.last_message_at) {
           const lastMsgTime = new Date(contact.last_message_at).getTime();
           const currentMsgTime = new Date(timestamp).getTime();
           const hoursSinceLastMsg = (currentMsgTime - lastMsgTime) / (1000 * 60 * 60);
 
-          // Se passou mais de 24h desde a última mensagem, é um "retorno"
           if (hoursSinceLastMsg >= 24) {
             isReturningContact = true;
-            contactQueries.incrementReturnCount.run(contact.id);
-            logger.info(`🔄 Follow receptivo: ${phone} retornou após ${Math.round(hoursSinceLastMsg)}h`);
+            await contactQueries.incrementReturnCount(contact.id);
+            logger.info(`Follow receptivo: ${phone} retornou após ${Math.round(hoursSinceLastMsg)}h`);
           }
         }
 
-        // Atualiza último contato (só atualiza nome se veio do contato)
-        contactQueries.upsert.get(instanceId, phone, nameToUse, null, timestamp);
-        contact = contactQueries.findByPhone.get(instanceId, phone);
+        // Atualiza contato
+        await contactQueries.upsert(instanceId, phone, nameToUse, null, timestamp);
+        contact = await contactQueries.findByPhone(instanceId, phone);
       }
 
       // Salva mensagem
-      messageQueries.create.run(
+      await messageQueries.create(
         instanceId,
         contact.id,
         messageId || `msg_${Date.now()}`,
@@ -72,13 +62,13 @@ class AnalyticsService {
 
       // Atualiza contadores
       if (fromMe) {
-        contactQueries.incrementSent.run(contact.id);
+        await contactQueries.incrementSent(contact.id);
       } else {
-        contactQueries.incrementReceived.run(contact.id);
+        await contactQueries.incrementReceived(contact.id);
       }
 
-      // Atualiza métricas diárias (agora inclui returning_contacts)
-      metricsQueries.upsertDaily.run(
+      // Atualiza métricas diárias
+      await metricsQueries.upsertDaily(
         instanceId,
         dateStr,
         isNewContact ? 1 : 0,
@@ -95,18 +85,18 @@ class AnalyticsService {
   }
 
   /**
-   * Obtém métricas do dashboard para uma instância
+   * Obtém métricas do dashboard
    */
-  getDashboardMetrics(instanceId, startDate = null, endDate = null) {
+  async getDashboardMetrics(instanceId, startDate = null, endDate = null) {
     const today = new Date().toISOString().split('T')[0];
     const start = startDate || today;
     const end = endDate || today;
 
     try {
-      // Métricas agregadas do período
-      const dailyMetrics = metricsQueries.getByDateRange.all(instanceId, start, end);
+      // Métricas agregadas
+      const dailyMetrics = await metricsQueries.getByDateRange(instanceId, start, end);
 
-      // Totaliza as métricas
+      // Totaliza
       const totals = dailyMetrics.reduce((acc, day) => ({
         newContacts: acc.newContacts + day.new_contacts,
         messagesReceived: acc.messagesReceived + day.total_messages_received,
@@ -114,17 +104,17 @@ class AnalyticsService {
         returningContacts: acc.returningContacts + (day.returning_contacts || 0)
       }), { newContacts: 0, messagesReceived: 0, messagesSent: 0, returningContacts: 0 });
 
-      // Contatos ativos (com mensagens recentes)
-      const activeContacts = this.getActiveContacts(instanceId, 100);
+      // Contatos ativos
+      const activeContacts = await this.getActiveContacts(instanceId, 100);
 
-      // Calcula tentativas ativas de contato (enviamos mas não responderam)
-      const pendingContacts = this.getPendingContacts(instanceId);
+      // Contatos pendentes
+      const pendingContacts = await this.getPendingContacts(instanceId);
 
-      // Calcula tempos de resposta
-      const responseTimes = this.calculateResponseTimes(instanceId, start, end);
+      // Tempos de resposta
+      const responseTimes = await this.calculateResponseTimes(instanceId, start, end);
 
       // Contatos por dia
-      const contactsByDay = messageQueries.countByDateRange.all(instanceId, start, end);
+      const contactsByDay = await messageQueries.countByDateRange(instanceId, start, end);
 
       return {
         period: { start, end },
@@ -142,11 +132,11 @@ class AnalyticsService {
   }
 
   /**
-   * Obtém contatos ativos ordenados por última mensagem
+   * Obtém contatos ativos
    */
-  getActiveContacts(instanceId, limit = 50) {
+  async getActiveContacts(instanceId, limit = 50) {
     try {
-      const contacts = contactQueries.getActiveContacts.all(instanceId, limit);
+      const contacts = await contactQueries.getActiveContacts(instanceId, limit);
 
       return contacts.map(c => ({
         id: c.id,
@@ -166,22 +156,20 @@ class AnalyticsService {
 
   /**
    * Obtém contatos pendentes (sem resposta)
-   * São contatos onde a última mensagem foi enviada por nós
    */
-  getPendingContacts(instanceId) {
+  async getPendingContacts(instanceId) {
     try {
-      const query = db.prepare(`
+      const result = await query(`
         SELECT c.*, 
                (SELECT m.from_me FROM messages m 
                 WHERE m.contact_id = c.id 
                 ORDER BY m.timestamp DESC LIMIT 1) as last_from_me
         FROM contacts c
-        WHERE c.instance_id = ?
+        WHERE c.instance_id = $1
         AND c.total_messages_sent > 0
-      `);
+      `, [instanceId]);
 
-      const contacts = query.all(instanceId);
-      return contacts.filter(c => c.last_from_me === 1);
+      return result.rows.filter(c => c.last_from_me === 1);
     } catch (error) {
       logger.error(`Erro ao obter contatos pendentes: ${error.message}`);
       return [];
@@ -191,10 +179,9 @@ class AnalyticsService {
   /**
    * Calcula tempos de resposta
    */
-  calculateResponseTimes(instanceId, startDate, endDate) {
+  async calculateResponseTimes(instanceId, startDate, endDate) {
     try {
-      // Busca todas as conversas do período
-      const query = db.prepare(`
+      const result = await query(`
         SELECT 
           m1.contact_id,
           m1.timestamp as received_at,
@@ -204,22 +191,21 @@ class AnalyticsService {
            AND m2.from_me = 1 
            AND m2.timestamp > m1.timestamp) as responded_at
         FROM messages m1
-        WHERE m1.instance_id = ?
+        WHERE m1.instance_id = $1
         AND m1.from_me = 0
-        AND DATE(m1.timestamp) >= ?
-        AND DATE(m1.timestamp) <= ?
+        AND DATE(m1.timestamp) >= $2
+        AND DATE(m1.timestamp) <= $3
         ORDER BY m1.timestamp ASC
-      `);
+      `, [instanceId, startDate, endDate]);
 
-      const messages = query.all(instanceId, startDate, endDate);
+      const messages = result.rows;
 
-      // Filtra apenas mensagens que foram respondidas
       const responseTimes = messages
         .filter(m => m.responded_at)
         .map(m => {
           const received = new Date(m.received_at).getTime();
           const responded = new Date(m.responded_at).getTime();
-          return (responded - received) / 1000; // Em segundos
+          return (responded - received) / 1000;
         });
 
       if (responseTimes.length === 0) {
@@ -232,8 +218,7 @@ class AnalyticsService {
         };
       }
 
-      // Primeira resposta (do primeiro contato de cada cliente)
-      const firstResponses = this.getFirstResponseTimes(instanceId, startDate, endDate);
+      const firstResponses = await this.getFirstResponseTimes(instanceId, startDate, endDate);
       const avgFirstResponse = firstResponses.length > 0
         ? firstResponses.reduce((a, b) => a + b, 0) / firstResponses.length
         : 0;
@@ -258,11 +243,11 @@ class AnalyticsService {
   }
 
   /**
-   * Obtém tempos de primeira resposta (leads novos)
+   * Obtém tempos de primeira resposta
    */
-  getFirstResponseTimes(instanceId, startDate, endDate) {
+  async getFirstResponseTimes(instanceId, startDate, endDate) {
     try {
-      const query = db.prepare(`
+      const result = await query(`
         SELECT 
           c.id as contact_id,
           c.first_message_at,
@@ -271,14 +256,12 @@ class AnalyticsService {
            WHERE m.contact_id = c.id 
            AND m.from_me = 1) as first_response_at
         FROM contacts c
-        WHERE c.instance_id = ?
-        AND DATE(c.first_message_at) >= ?
-        AND DATE(c.first_message_at) <= ?
-      `);
+        WHERE c.instance_id = $1
+        AND DATE(c.first_message_at) >= $2
+        AND DATE(c.first_message_at) <= $3
+      `, [instanceId, startDate, endDate]);
 
-      const contacts = query.all(instanceId, startDate, endDate);
-
-      return contacts
+      return result.rows
         .filter(c => c.first_response_at)
         .map(c => {
           const firstMsg = new Date(c.first_message_at).getTime();
@@ -292,12 +275,11 @@ class AnalyticsService {
   }
 
   /**
-   * Obtém contatos que são "follows receptivos" (retornaram após período)
-   * Esses são contatos valiosos que voltaram a entrar em contato
+   * Obtém follows receptivos
    */
-  getReturningContacts(instanceId, limit = 50) {
+  async getReturningContacts(instanceId, limit = 50) {
     try {
-      const query = db.prepare(`
+      const result = await query(`
         SELECT c.*,
                (SELECT m.timestamp FROM messages m 
                 WHERE m.contact_id = c.id 
@@ -306,15 +288,13 @@ class AnalyticsService {
                 WHERE m.contact_id = c.id 
                 ORDER BY m.timestamp DESC LIMIT 1) as last_message
         FROM contacts c
-        WHERE c.instance_id = ?
+        WHERE c.instance_id = $1
         AND c.return_count > 0
         ORDER BY c.last_message_at DESC
-        LIMIT ?
-      `);
+        LIMIT $2
+      `, [instanceId, limit]);
 
-      const contacts = query.all(instanceId, limit);
-
-      return contacts.map(c => ({
+      return result.rows.map(c => ({
         id: c.id,
         phone: c.phone,
         name: c.name || c.phone,
@@ -332,12 +312,12 @@ class AnalyticsService {
   }
 
   /**
-   * Busca um contato por ID
+   * Busca contato por ID
    */
-  getContactById(contactId) {
+  async getContactById(contactId) {
     try {
-      const query = db.prepare(`SELECT * FROM contacts WHERE id = ?`);
-      const contact = query.get(contactId);
+      const result = await query(`SELECT * FROM contacts WHERE id = $1`, [contactId]);
+      const contact = result.rows[0];
       if (!contact) return null;
 
       return {
@@ -353,11 +333,11 @@ class AnalyticsService {
   }
 
   /**
-   * Obtém conversa completa de um contato
+   * Obtém conversa completa
    */
-  getConversation(contactId) {
+  async getConversation(contactId) {
     try {
-      const messages = messageQueries.getConversation.all(contactId);
+      const messages = await messageQueries.getConversation(contactId);
       return messages.map(m => ({
         id: m.id,
         messageId: m.message_id,
@@ -373,11 +353,11 @@ class AnalyticsService {
   }
 
   /**
-   * Obtém contatos com preview da última mensagem
+   * Obtém contatos com preview
    */
-  getContactsWithPreview(instanceId, limit = 50) {
+  async getContactsWithPreview(instanceId, limit = 50) {
     try {
-      const query = db.prepare(`
+      const result = await query(`
         SELECT 
           c.*,
           (SELECT m.body FROM messages m 
@@ -389,24 +369,22 @@ class AnalyticsService {
           (SELECT COUNT(*) FROM messages m 
            WHERE m.contact_id = c.id AND m.from_me = 0) as unread_count
         FROM contacts c
-        WHERE c.instance_id = ?
+        WHERE c.instance_id = $1
         ORDER BY c.last_message_at DESC
-        LIMIT ?
-      `);
+        LIMIT $2
+      `, [instanceId, limit]);
 
-      const contacts = query.all(instanceId, limit);
-
-      return contacts.map(c => ({
+      return result.rows.map(c => ({
         id: c.id,
         phone: c.phone,
         name: c.name || c.phone,
         lastMessage: c.last_message,
         lastMessageFromMe: c.last_from_me === 1,
         lastMessageAt: c.last_message_at,
-        unreadCount: c.unread_count,
+        unreadCount: parseInt(c.unread_count) || 0,
         isLead: c.is_lead === 1,
-        returnCount: c.return_count || 0, // Indica se é follow receptivo
-        isReturning: (c.return_count || 0) > 0 // Flag para identificar follows
+        returnCount: c.return_count || 0,
+        isReturning: (c.return_count || 0) > 0
       }));
     } catch (error) {
       logger.error(`Erro ao obter contatos com preview: ${error.message}`);

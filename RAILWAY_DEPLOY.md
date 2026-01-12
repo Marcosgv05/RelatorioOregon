@@ -21,24 +21,23 @@
    - Selecione seu repositório
    - Railway detectará automaticamente que é um projeto Node.js
 
-3. **Configurar Variáveis de Ambiente**
+3. **Adicionar PostgreSQL**
+   - No projeto criado, clique em "New" → "Database" → "Add PostgreSQL"
+   - Railway criará automaticamente a variável `DATABASE_URL`
+
+4. **Configurar Variáveis de Ambiente**
    No painel do Railway, adicione as seguintes variáveis:
    - `NODE_ENV=production`
    - `PORT=9000`
-   - `JWT_SECRET` (gere uma chave secreta aqui)
-
-4. **Ajustes no Código**
-   - O projeto já está configurado para usar SQLite local
-   - A porta 9000 é configurada automaticamente
-   - Health check disponível em `/api/health`
+   - `JWT_SECRET` (gere uma chave secreta qualquer)
 
 ### Funcionalidades
-- ✅ Sistema completo de analytics WhatsApp
-- ✅ Dashboard em tempo real
-- ✅ Autenticação de usuários
-- ✅ Socket.IO para atualizações live
-- ✅ Banco SQLite (persistência automática)
-- ✅ Health check para monitoramento
+- Sistema completo de analytics WhatsApp
+- Dashboard em tempo real
+- Autenticação de usuários
+- Socket.IO para atualizações live
+- **PostgreSQL para persistência permanente**
+- Health check para monitoramento
 
 ### URLs Importantes
 - **Aplicação**: `https://seu-projeto.railway.app`
@@ -46,6 +45,6 @@
 - **Health Check**: `https://seu-projeto.railway.app/api/health`
 
 ### Troubleshooting
-- Se ocorrer erro de porta, verifique se a variável `PORT=9000` está configurada
-- Para resetar o banco: delete o projeto e crie novamente
+- Se ocorrer erro de porta, verifique se `PORT=9000` está configurada
+- Se ocorrer erro de banco, verifique se o PostgreSQL foi adicionado
 - Logs disponíveis no painel do Railway

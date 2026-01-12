@@ -5,7 +5,7 @@
   "main": "src/server.js",
   "type": "module",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "scripts": {
     "start": "node src/server.js",
@@ -24,7 +24,6 @@
   "dependencies": {
     "@whiskeysockets/baileys": "^6.7.21",
     "bcryptjs": "^2.4.3",
-    "better-sqlite3": "^11.6.0",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
@@ -32,6 +31,7 @@
     "express-rate-limit": "^8.2.1",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
+    "pg": "^8.11.3",
     "pino": "^8.19.0",
     "pino-pretty": "^10.3.0",
     "qrcode": "^1.5.3",

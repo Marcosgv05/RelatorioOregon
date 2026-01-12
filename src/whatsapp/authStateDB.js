@@ -3,29 +3,29 @@ import { logger } from '../config/logger.js';
 import { initAuthCreds, BufferJSON } from '@whiskeysockets/baileys';
 
 /**
- * Usa o banco de dados SQLite para armazenar o estado de autenticação do WhatsApp
+ * Usa o banco de dados PostgreSQL para armazenar o estado de autenticação do WhatsApp
  * @param {string} sessionId - ID da sessão
  */
 export async function useDatabaseAuthState(sessionId) {
-  
+
   const shouldIgnoreKey = (key) => {
-    // Mesma estratégia do Arauto: evita chaves que podem causar problemas de sync
+    // Evita chaves que podem causar problemas de sync
     return key.startsWith('app-state-sync-key-') || key.startsWith('app-state-sync-version-');
   };
 
-  const writeData = (key, data) => {
+  const writeData = async (key, data) => {
     try {
       if (shouldIgnoreKey(key)) return;
       const value = JSON.stringify(data, BufferJSON.replacer);
-      authStateQueries.set.run(sessionId, key, value);
+      await authStateQueries.set(sessionId, key, value);
     } catch (error) {
       logger.error(`Erro ao salvar auth state [${key}]: ${error.message}`);
     }
   };
 
-  const readData = (key) => {
+  const readData = async (key) => {
     try {
-      const row = authStateQueries.get.get(sessionId, key);
+      const row = await authStateQueries.get(sessionId, key);
       return row ? JSON.parse(row.data_value, BufferJSON.reviver) : null;
     } catch (error) {
       logger.error(`Erro ao ler auth state [${key}]: ${error.message}`);
@@ -33,16 +33,16 @@ export async function useDatabaseAuthState(sessionId) {
     }
   };
 
-  const removeData = (key) => {
+  const removeData = async (key) => {
     try {
-      authStateQueries.delete.run(sessionId, key);
+      await authStateQueries.delete(sessionId, key);
     } catch (error) {
       logger.error(`Erro ao remover auth state [${key}]: ${error.message}`);
     }
   };
 
-  // Carrega ou cria credenciais (IMPORTANTE: Baileys precisa de noiseKey/signedIdentityKey etc)
-  let creds = readData('creds');
+  // Carrega ou cria credenciais
+  let creds = await readData('creds');
   const credsLooksInvalid =
     !creds ||
     typeof creds !== 'object' ||
@@ -51,18 +51,18 @@ export async function useDatabaseAuthState(sessionId) {
     !creds.noiseKey.private;
 
   if (credsLooksInvalid) {
-    logger.warn(`Credenciais ausentes/ inválidas para ${sessionId}. Recriando initAuthCreds().`);
-    // Limpa tudo para evitar mistura de dados antigos serializados errado
+    logger.warn(`Credenciais ausentes/inválidas para ${sessionId}. Recriando initAuthCreds().`);
+    // Limpa tudo para evitar mistura de dados antigos
     try {
-      authStateQueries.deleteAll.run(sessionId);
+      await authStateQueries.deleteAll(sessionId);
     } catch (e) {
       // ignora
     }
     creds = initAuthCreds();
-    // Persiste imediatamente para evitar crash no handshake
-    writeData('creds', creds);
+    // Persiste imediatamente
+    await writeData('creds', creds);
   }
-  
+
   return {
     state: {
       creds,
@@ -71,7 +71,7 @@ export async function useDatabaseAuthState(sessionId) {
           const data = {};
           for (const id of ids) {
             const key = `${type}-${id}`;
-            const value = readData(key);
+            const value = await readData(key);
             data[id] = value;
           }
           return data;
@@ -81,9 +81,9 @@ export async function useDatabaseAuthState(sessionId) {
             for (const [id, value] of Object.entries(categoryData)) {
               const key = `${category}-${id}`;
               if (value) {
-                writeData(key, value);
+                await writeData(key, value);
               } else {
-                removeData(key);
+                await removeData(key);
               }
             }
           }
@@ -91,7 +91,7 @@ export async function useDatabaseAuthState(sessionId) {
       }
     },
     saveCreds: async () => {
-      writeData('creds', creds);
+      await writeData('creds', creds);
     }
   };
 }
@@ -102,9 +102,8 @@ export async function useDatabaseAuthState(sessionId) {
  */
 export async function clearAuthState(sessionId) {
   try {
-    const result = authStateQueries.deleteAll.run(sessionId);
-    logger.info(`🗑️ Auth state limpo para sessão ${sessionId}: ${result.changes} registros removidos`);
-    return result.changes;
+    await authStateQueries.deleteAll(sessionId);
+    logger.info(`Auth state limpo para sessão ${sessionId}`);
   } catch (error) {
     logger.error(`Erro ao limpar auth state: ${error.message}`);
     throw error;

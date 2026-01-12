@@ -11,23 +11,19 @@ router.use(authenticateToken);
 
 /**
  * GET /api/analytics/dashboard/:instanceId
- * Retorna métricas do dashboard para uma instância
  */
-router.get('/dashboard/:instanceId', (req, res) => {
+router.get('/dashboard/:instanceId', async (req, res) => {
   try {
     const { instanceId } = req.params;
     const { startDate, endDate } = req.query;
 
-    // Verifica se instância pertence ao usuário
-    const instance = instanceQueries.findById.get(instanceId);
+    const instance = await instanceQueries.findById(instanceId);
     if (!instance || instance.user_id !== req.user.id) {
       return res.status(404).json({ error: 'Instância não encontrada' });
     }
 
-    // Obtém métricas
-    const metrics = analyticsService.getDashboardMetrics(instanceId, startDate, endDate);
+    const metrics = await analyticsService.getDashboardMetrics(instanceId, startDate, endDate);
 
-    // Formata tempos para exibição
     const formattedMetrics = {
       ...metrics,
       responseTimes: {
@@ -53,20 +49,18 @@ router.get('/dashboard/:instanceId', (req, res) => {
 
 /**
  * GET /api/analytics/contacts/:instanceId
- * Retorna lista de contatos com preview
  */
-router.get('/contacts/:instanceId', (req, res) => {
+router.get('/contacts/:instanceId', async (req, res) => {
   try {
     const { instanceId } = req.params;
     const { limit = 50 } = req.query;
 
-    const instance = instanceQueries.findById.get(instanceId);
+    const instance = await instanceQueries.findById(instanceId);
     if (!instance || instance.user_id !== req.user.id) {
       return res.status(404).json({ error: 'Instância não encontrada' });
     }
 
-    const contacts = analyticsService.getContactsWithPreview(instanceId, parseInt(limit));
-
+    const contacts = await analyticsService.getContactsWithPreview(instanceId, parseInt(limit));
     res.json({ contacts });
   } catch (error) {
     logger.error(`Erro ao obter contatos: ${error.message}`);
@@ -76,17 +70,11 @@ router.get('/contacts/:instanceId', (req, res) => {
 
 /**
  * GET /api/analytics/conversation/:contactId
- * Retorna conversa completa de um contato
  */
-router.get('/conversation/:contactId', (req, res) => {
+router.get('/conversation/:contactId', async (req, res) => {
   try {
     const { contactId } = req.params;
-
-    // TODO: Verificar se o contato pertence a uma instância do usuário
-    // Por simplicidade, pulamos essa verificação aqui
-
-    const messages = analyticsService.getConversation(parseInt(contactId));
-
+    const messages = await analyticsService.getConversation(parseInt(contactId));
     res.json({ messages });
   } catch (error) {
     logger.error(`Erro ao obter conversa: ${error.message}`);
@@ -96,19 +84,17 @@ router.get('/conversation/:contactId', (req, res) => {
 
 /**
  * GET /api/analytics/pending/:instanceId
- * Retorna contatos aguardando resposta
  */
-router.get('/pending/:instanceId', (req, res) => {
+router.get('/pending/:instanceId', async (req, res) => {
   try {
     const { instanceId } = req.params;
 
-    const instance = instanceQueries.findById.get(instanceId);
+    const instance = await instanceQueries.findById(instanceId);
     if (!instance || instance.user_id !== req.user.id) {
       return res.status(404).json({ error: 'Instância não encontrada' });
     }
 
-    const pendingContacts = analyticsService.getPendingContacts(instanceId);
-
+    const pendingContacts = await analyticsService.getPendingContacts(instanceId);
     res.json({
       count: pendingContacts.length,
       contacts: pendingContacts
@@ -121,20 +107,18 @@ router.get('/pending/:instanceId', (req, res) => {
 
 /**
  * GET /api/analytics/returning/:instanceId
- * Retorna contatos que são "follows receptivos" (retornaram após período)
  */
-router.get('/returning/:instanceId', (req, res) => {
+router.get('/returning/:instanceId', async (req, res) => {
   try {
     const { instanceId } = req.params;
     const { limit = 50 } = req.query;
 
-    const instance = instanceQueries.findById.get(instanceId);
+    const instance = await instanceQueries.findById(instanceId);
     if (!instance || instance.user_id !== req.user.id) {
       return res.status(404).json({ error: 'Instância não encontrada' });
     }
 
-    const returningContacts = analyticsService.getReturningContacts(instanceId, parseInt(limit));
-
+    const returningContacts = await analyticsService.getReturningContacts(instanceId, parseInt(limit));
     res.json({
       count: returningContacts.length,
       contacts: returningContacts
@@ -147,14 +131,13 @@ router.get('/returning/:instanceId', (req, res) => {
 
 /**
  * GET /api/analytics/summary
- * Retorna resumo de todas as instâncias do usuário
  */
-router.get('/summary', (req, res) => {
+router.get('/summary', async (req, res) => {
   try {
-    const instances = instanceQueries.findByUserId.all(req.user.id);
+    const instances = await instanceQueries.findByUserId(req.user.id);
 
-    const summary = instances.map(inst => {
-      const metrics = analyticsService.getDashboardMetrics(inst.id);
+    const summary = await Promise.all(instances.map(async (inst) => {
+      const metrics = await analyticsService.getDashboardMetrics(inst.id);
       return {
         instance: {
           id: inst.id,
@@ -170,7 +153,7 @@ router.get('/summary', (req, res) => {
           avgResponseTime: analyticsService.formatTime(metrics.responseTimes.avgResponseTimeSeconds)
         }
       };
-    });
+    }));
 
     res.json({ summary });
   } catch (error) {
@@ -181,7 +164,6 @@ router.get('/summary', (req, res) => {
 
 /**
  * POST /api/analytics/send/:contactId
- * Envia uma mensagem para um contato
  */
 router.post('/send/:contactId', async (req, res) => {
   try {
@@ -192,31 +174,24 @@ router.post('/send/:contactId', async (req, res) => {
       return res.status(400).json({ error: 'Mensagem é obrigatória' });
     }
 
-    // Busca o contato para obter o telefone e a instância
-    const contact = analyticsService.getContactById(parseInt(contactId));
+    const contact = await analyticsService.getContactById(parseInt(contactId));
     if (!contact) {
       return res.status(404).json({ error: 'Contato não encontrado' });
     }
 
-    // Verifica se a instância pertence ao usuário
-    const instance = instanceQueries.findById.get(contact.instanceId);
+    const instance = await instanceQueries.findById(contact.instanceId);
     if (!instance || instance.user_id !== req.user.id) {
       return res.status(403).json({ error: 'Acesso negado' });
     }
 
-    // Verifica se a instância está conectada
     if (instance.status !== 'connected') {
       return res.status(400).json({ error: 'WhatsApp não está conectado' });
     }
 
-    // Importa o sessionManager
     const sessionManager = (await import('../whatsapp/sessionManager.js')).default;
-
-    // Envia a mensagem
     const result = await sessionManager.sendMessage(instance.session_id, contact.phone, message.trim());
 
-    // Salva a mensagem no banco de dados
-    analyticsService.processMessage(instance.id, contact.phone, {
+    await analyticsService.processMessage(instance.id, contact.phone, {
       messageId: result.messageId,
       fromMe: true,
       body: message.trim(),
@@ -225,7 +200,7 @@ router.post('/send/:contactId', async (req, res) => {
       mediaType: 'text'
     });
 
-    logger.info(`📤 Mensagem enviada para ${contact.phone} via API`);
+    logger.info(`Mensagem enviada para ${contact.phone} via API`);
 
     res.json({
       success: true,
